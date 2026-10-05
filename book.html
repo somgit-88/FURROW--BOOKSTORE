@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Furrow — Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Spectral:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --soil-900:#141b12;
+    --glass-fill: rgba(244,236,216,0.08);
+    --glass-fill-strong: rgba(244,236,216,0.14);
+    --glass-border: rgba(244,236,216,0.22);
+    --wheat-500:#d9a441;
+    --wheat-400:#ecc36c;
+    --rust-600:#b3492f;
+    --sky-500:#4f8f8c;
+    --parchment-100:#f4ecd8;
+    --parchment-050:#faf5e8;
+    --display: 'Fraunces', serif;
+    --body: 'Spectral', serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--soil-900); color:var(--parchment-100); font-family:var(--body); line-height:1.6; position:relative; overflow-x:hidden;}
+  a{color:inherit; text-decoration:none;}
+  img{max-width:100%; display:block;}
+  button{font-family:inherit;}
+
+  .backdrop{position:fixed; inset:0; z-index:-1; overflow:hidden;}
+  .blob{position:absolute; border-radius:50%; filter:blur(90px); opacity:0.5;}
+  .blob.b1{width:50vw; height:50vw; top:-16vw; left:-10vw; background:var(--wheat-500);}
+  .blob.b2{width:42vw; height:42vw; bottom:-14vw; right:-8vw; background:var(--sky-500); opacity:0.38;}
+
+  .glass{background:var(--glass-fill); backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%); border:1px solid var(--glass-border); box-shadow:0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12); border-radius:16px;}
+
+  header{display:flex; align-items:center; justify-content:space-between; padding:16px 5vw; margin:18px 3vw 0; position:sticky; top:18px; z-index:50; border-radius:20px;}
+  .wordmark{font-family:var(--display); font-weight:700; font-size:1.4rem; display:flex; align-items:center; gap:10px;}
+  .wordmark .mark{width:11px;height:11px;background:var(--wheat-500); transform:rotate(45deg); display:inline-block;}
+  .back-link{font-family:var(--mono); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; opacity:0.75;}
+  .back-link:hover{opacity:1; color:var(--wheat-400);}
+
+  main{max-width:1200px; margin:0 auto; padding:5vw;}
+  #loadingState{text-align:center; padding:120px 20px; font-family:var(--mono); opacity:0.6;}
+  #notFoundState{display:none; text-align:center; padding:120px 20px;}
+  #notFoundState h1{font-family:var(--display); font-size:2rem;}
+
+  .book-layout{display:none; grid-template-columns:0.9fr 1.1fr; gap:5vw; align-items:start;}
+  .gallery-wrap{position:sticky; top:110px;}
+  .main-cover{border-radius:18px; overflow:hidden; aspect-ratio:3/4; background:linear-gradient(160deg, rgba(217,164,65,0.3), rgba(79,143,140,0.22)); display:flex; align-items:center; justify-content:center; font-family:var(--display); font-size:1.2rem; text-align:center; padding:24px; position:relative;}
+  .main-cover img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  .thumb-row{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+  .thumb{width:70px; height:93px; border-radius:8px; overflow:hidden; border:1px solid var(--glass-border); cursor:pointer; opacity:0.7; transition:opacity .18s;}
+  .thumb:hover, .thumb.active{opacity:1; border-color:var(--wheat-400);}
+  .thumb img{width:100%; height:100%; object-fit:cover;}
+
+  .eyebrow{font-family:var(--mono); font-size:0.76rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--wheat-400); margin-bottom:14px; display:block;}
+  h1.book-title{font-family:var(--display); font-weight:600; font-size:clamp(1.9rem, 3.4vw, 2.8rem); line-height:1.08; margin:0 0 10px;}
+  .book-author{opacity:0.68; margin-bottom:22px; font-size:1rem;}
+  .book-meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:var(--mono); font-size:0.8rem; opacity:0.65; margin-bottom:26px;}
+  .book-desc{font-size:1.05rem; opacity:0.88; margin-bottom:30px; max-width:60ch;}
+
+  .buy-panel{padding:26px; margin-bottom:30px;}
+  .price-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .price-big{font-family:var(--mono); font-size:1.8rem; font-weight:600; color:var(--wheat-400);}
+  .currency-toggle{display:flex; border-radius:20px; overflow:hidden; border:1px solid var(--glass-border);}
+  .currency-toggle button{background:none; border:none; color:var(--parchment-100); padding:8px 14px; font-family:var(--mono); font-size:0.78rem; cursor:pointer; opacity:0.6;}
+  .currency-toggle button.active{background:var(--wheat-500); color:var(--soil-900); opacity:1; font-weight:600;}
+  .btn{width:100%; font-family:var(--mono); font-size:0.9rem; letter-spacing:0.04em; text-transform:uppercase; padding:16px 26px; border-radius:12px; border:none; cursor:pointer; background:var(--wheat-500); color:var(--soil-900); font-weight:600; transition:transform .15s, background .2s;}
+  .btn:hover{transform:translateY(-2px); background:var(--wheat-400);}
+  .buy-note{font-family:var(--mono); font-size:0.7rem; opacity:0.45; text-align:center; margin-top:12px;}
+
+  .ad-slot{margin:0 0 30px; border-radius:16px; display:flex; align-items:center; justify-content:center; padding:18px; min-height:100px; border:1px dashed var(--glass-border); background:rgba(244,236,216,0.04);}
+  .ad-slot .ad-label{font-family:var(--mono); font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; opacity:0.4;}
+
+  .category-tags{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:26px;}
+  .tag-chip{font-family:var(--mono); font-size:0.72rem; padding:6px 14px; border-radius:20px; border:1px solid var(--glass-border); background:var(--glass-fill);}
+
+  @media (max-width:860px){
+    .book-layout{grid-template-columns:1fr; gap:32px;}
+    .gallery-wrap{position:static; max-width:340px; margin:0 auto;}
+  }
+</style>
+</head>
+<body>
+
+<div class="backdrop"><div class="blob b1"></div><div class="blob b2"></div></div>
+
+<header class="glass">
+  <a href="index.html" class="wordmark"><span class="mark"></span>FURROW</a>
+  <a href="index.html" class="back-link">&larr; Back to catalog</a>
+</header>
+
+<main>
+  <div id="loadingState">Loading book…</div>
+
+  <div id="notFoundState">
+    <h1>Book not found</h1>
+    <p style="opacity:0.65;">This title may have been removed or the link is incorrect.</p>
+    <a href="index.html" class="btn" style="max-width:240px; margin:20px auto 0; display:block; text-align:center;">Back to catalog</a>
+  </div>
+
+  <div class="book-layout" id="bookLayout">
+    <div class="gallery-wrap">
+      <div class="main-cover glass" id="mainCover"></div>
+      <div class="thumb-row" id="thumbRow"></div>
+    </div>
+
+    <div>
+      <span class="eyebrow" id="bookCategory">Category</span>
+      <h1 class="book-title" id="bookTitle">Title</h1>
+      <div class="book-author" id="bookAuthor">by Author</div>
+
+      <div class="book-meta-row">
+        <span id="bookPages"></span>
+        <span id="bookFormat"></span>
+      </div>
+
+      <p class="book-desc" id="bookDesc"></p>
+
+      <div class="category-tags" id="bookTags"></div>
+
+      <div class="buy-panel glass">
+        <div class="price-row">
+          <span class="price-big" id="priceDisplay"></span>
+          <div class="currency-toggle" id="currencyToggle">
+            <button data-cur="inr" class="active">₹ INR</button>
+            <button data-cur="usd">$ USD</button>
+          </div>
+        </div>
+        <button class="btn" id="buyBtn">Buy Now — Instant Download</button>
+        <div class="buy-note">Secure checkout via Cashfree. Your download link is generated instantly after payment.</div>
+      </div>
+
+      <div class="buy-panel glass" id="upiPanel" style="text-align:center;">
+        <span class="eyebrow" style="margin-bottom:14px;">Prefer paying directly? (India only)</span>
+        <img src="upi-qr.jpg" alt="UPI QR code" style="width:180px; border-radius:12px; margin:0 auto 14px; border:1px solid var(--glass-border);">
+        <div style="font-family:var(--mono); font-size:0.85rem; opacity:0.85; margin-bottom:6px;">UPI ID: allinalll9009-1@oksbi</div>
+        <div style="font-family:var(--mono); font-size:0.78rem; opacity:0.6; margin-bottom:16px;">Scan with any UPI app to pay directly</div>
+        <div class="buy-note" style="margin-top:0;">
+          After paying, send us your payment screenshot and this book's title through the
+          <a href="index.html#feedback" target="_blank" style="color:var(--wheat-400); text-decoration:underline;">message form</a>.
+          We'll email your download link by <span id="upiExpiryNote">manual confirmation</span> — usually within a few hours.
+        </div>
+      </div>
+
+      <div class="ad-slot glass">
+        <span class="ad-label">Advertisement</span>
+        <!-- AdSense unit: sits below the buy panel, on every book's own page -->
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vThBy96JRuzGQF43IeOV9EnIfH1tJsAKosE_cKMmP6cMUbDlX_rK9IgOevynDQWp8WBZ65oqAPW8wiq/pub?gid=1932584247&single=true&output=csv";
+
+const params = new URLSearchParams(window.location.search);
+const bookId = params.get("id");
+let CURRENCY = "inr";
+let CURRENT_BOOK = null;
+
+function priceLabel(b){
+  return CURRENCY === "inr" ? `₹${b.price_inr || "—"}` : `$${b.price_usd || "—"}`;
+}
+
+function renderBook(b){
+  CURRENT_BOOK = b;
+  document.title = b.title + " — Furrow";
+  document.getElementById("bookCategory").textContent = (b.category || "").split(",")[0].trim();
+  document.getElementById("bookTitle").textContent = b.title;
+  document.getElementById("bookAuthor").textContent = "by " + (b.author || "Furrow Press");
+  document.getElementById("bookPages").textContent = b.pages ? b.pages + " pages" : "";
+  document.getElementById("bookFormat").textContent = b.format || "PDF";
+  document.getElementById("bookDesc").textContent = b.full_description || b.short_description || "";
+  document.getElementById("priceDisplay").textContent = priceLabel(b);
+
+  const tagsWrap = document.getElementById("bookTags");
+  tagsWrap.innerHTML = "";
+  (b.category || "").split(",").forEach(c => {
+    if(!c.trim()) return;
+    const el = document.createElement("span");
+    el.className = "tag-chip";
+    el.textContent = c.trim();
+    tagsWrap.appendChild(el);
+  });
+
+  // gallery: cover + any gallery_images
+  const images = [b.cover_image_url].concat((b.gallery_images || "").split(",")).map(s => s.trim()).filter(Boolean);
+  const mainCover = document.getElementById("mainCover");
+  const thumbRow = document.getElementById("thumbRow");
+  thumbRow.innerHTML = "";
+
+  function setMain(url){
+    mainCover.innerHTML = url ? `<img src="${url}" alt="${b.title}">` : b.title;
+  }
+  setMain(images[0]);
+
+  if(images.length > 1){
+    images.forEach((url, i) => {
+      const t = document.createElement("div");
+      t.className = "thumb" + (i === 0 ? " active" : "");
+      t.innerHTML = `<img src="${url}" alt="preview ${i+1}">`;
+      t.addEventListener("click", () => {
+        setMain(url);
+        thumbRow.querySelectorAll(".thumb").forEach(el => el.classList.remove("active"));
+        t.classList.add("active");
+      });
+      thumbRow.appendChild(t);
+    });
+  }
+
+  document.getElementById("loadingState").style.display = "none";
+  document.getElementById("bookLayout").style.display = "grid";
+}
+
+document.getElementById("currencyToggle").addEventListener("click", e => {
+  if(e.target.tagName !== "BUTTON") return;
+  CURRENCY = e.target.dataset.cur;
+  document.querySelectorAll("#currencyToggle button").forEach(b => b.classList.remove("active"));
+  e.target.classList.add("active");
+  if(CURRENT_BOOK) document.getElementById("priceDisplay").textContent = priceLabel(CURRENT_BOOK);
+});
+
+document.getElementById("buyBtn").addEventListener("click", () => {
+  alert("Checkout isn't wired up yet — this button will trigger Cashfree checkout once Stage 2 payments are built.");
+});
+
+if(!bookId){
+  document.getElementById("loadingState").style.display = "none";
+  document.getElementById("notFoundState").style.display = "block";
+} else {
+  Papa.parse(SHEET_CSV_URL, {
+    download: true,
+    header: true,
+    complete: (results) => {
+      const match = results.data.find(r => (r.id || "").trim() === bookId && (r.visible || "Yes").trim().toLowerCase() === "yes");
+      if(match){
+        renderBook(match);
+      } else {
+        document.getElementById("loadingState").style.display = "none";
+        document.getElementById("notFoundState").style.display = "block";
+      }
+    },
+    error: () => {
+      document.getElementById("loadingState").style.display = "none";
+      document.getElementById("notFoundState").style.display = "block";
+    }
+  });
+}
+</script>
+
+</body>
+</html>
